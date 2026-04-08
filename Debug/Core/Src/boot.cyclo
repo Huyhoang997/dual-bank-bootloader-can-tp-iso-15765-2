@@ -1,0 +1,8 @@
+../Core/Src/boot.c:5:13:JUMP_To_App_A	1
+../Core/Src/boot.c:19:13:JUMP_To_App_B	1
+../Core/Src/boot.c:33:27:BOOTLOADER_SetActiveBank	4
+../Core/Src/boot.c:70:27:BOOTLOADER_SetPendingFlag	4
+../Core/Src/boot.c:107:27:BOOTLOADER_SaveInfoFrame	3
+../Core/Src/boot.c:150:13:BOOTLOADER_ReceiveInfoFrame	4
+../Core/Src/boot.c:178:13:JUMP_To_Boot	1
+../Core/Src/boot.c:186:6:BOOTLOADER_Init	14
