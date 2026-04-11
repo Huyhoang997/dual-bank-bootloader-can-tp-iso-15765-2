@@ -643,7 +643,7 @@ void BOOTLOADER_Init(void)
                     mPrintf("Current application firmware: %.X\n", checkActive->activeBank);
                     JUMP_To_App_B();
                 }
-                else if(checkActive->pFlag == 1 && metadata->Hostcrc_AppB == check_crc_App)
+                else if(checkActive->pFlag == 1 && metadata->Hostcrc_AppB != check_crc_App)
                 {
                     mPrintf("CRC check mismatch!\nRoll back to older firmware...\n");
                     mPrintf("Current application firmware: %.X\n", checkActive->activeBank);
@@ -675,7 +675,7 @@ void BOOTLOADER_Init(void)
                     mPrintf("Current application firmware: %.X\n", checkActive->activeBank);
                     JUMP_To_App_A();
                 }
-                else if(checkActive->pFlag == 1 && metadata->Hostcrc_AppA == check_crc_App)
+                else if(checkActive->pFlag == 1 && metadata->Hostcrc_AppA != check_crc_App)
                 {
                     mPrintf("CRC check mismatch!\nRoll back to older firmware...\n");
                     mPrintf("Current application firmware: %.X\n", checkActive->activeBank);
