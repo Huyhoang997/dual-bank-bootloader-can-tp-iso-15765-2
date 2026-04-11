@@ -11,6 +11,7 @@ void DMA1_Channel1_IRQHandler(void) {
 	}
 }
 
+
 void BOOTLOADER_DMA_Config(void)
 {
   RCC->AHBENR |= (1U << 0);				// Enable_DMA_1_CLK
@@ -24,11 +25,9 @@ void BOOTLOADER_DMA_Config(void)
   DMA1_Channel1->CCR &= ~(1U << 4);		//Data_Read_from_Peri
   DMA1_Channel1->CCR |= (1U << 1); 		//Enable_Full_Transfer_IF
   			//Number_of_data
-
-
   NVIC_EnableIRQ(DMA1_Channel1_IRQn);
-  
 }
+
 
 BOOTLOADER_Status_Typedef BOOTLOADER_DMA_Transmit_IT(uint8_t *Src, uint8_t *Dst, uint16_t length)
 {
@@ -42,7 +41,8 @@ BOOTLOADER_Status_Typedef BOOTLOADER_DMA_Transmit_IT(uint8_t *Src, uint8_t *Dst,
 
 }
 
-BOOTLOADER_Status_Typedef BOOTLOADER_CAN_Config(BOOTLOADER_CAN_Config_t *Instance)
+
+BOOTLOADER_Status_Typedef BOOTLOADER_CAN_RxConfig(BOOTLOADER_CAN_Config_t *Instance)
 {
     CAN_FilterTypeDef filterConfig;
     HAL_StatusTypeDef checkStatus;

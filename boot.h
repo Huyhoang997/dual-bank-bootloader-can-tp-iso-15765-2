@@ -6,6 +6,7 @@
 #include "print_log.h"
 #include <stdbool.h>
 
+
 typedef enum
 {
     BOOTLOADER_OK,
@@ -13,7 +14,9 @@ typedef enum
     BOOTLOADER_INVALID_CMD,
     BOOTLOADER_ERASE_ERR,
     BOOTLOADER_PROGRAM_ERR,
-    BOOTLOADER_CAN_ERR
+    BOOTLOADER_CAN_ERR,
+    BOOTLOADER_CAN_TIMEOUT,
+    BOOTLOADER_CHECK_CRC_FAILD
 } BOOTLOADER_Status_Typedef;
 
 
