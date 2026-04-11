@@ -10,6 +10,7 @@ static BOOTLOADER_CAN_Config_t can_cfg = {
 };
 
 
+/* Send ACK/NACK signal to host via CAN */
 static BOOTLOADER_Status_Typedef BOOTLOADER_SendACK(CAN_AckCode_t AckCode)
 {
     CAN_TxHeaderTypeDef Header;
@@ -23,13 +24,13 @@ static BOOTLOADER_Status_Typedef BOOTLOADER_SendACK(CAN_AckCode_t AckCode)
 	Header.RTR = CAN_RTR_DATA;
 	Header.DLC = 1;
 
-    
 	checkStatus = HAL_CAN_AddTxMessage(can_cfg.hcan, &Header, data, &TxMailbox);
 	if(checkStatus != HAL_OK)
 	{
 		return BOOTLOADER_ERR;
 	}
 
+    /* Wait until transmission complete */
     while(HAL_CAN_IsTxMessagePending(can_cfg.hcan, TxMailbox));
 
     return BOOTLOADER_OK;
@@ -69,6 +70,7 @@ static void JUMP_To_App_B(void)
 }
 
 
+/* Set active bank in metadata sector */
 BOOTLOADER_Status_Typedef BOOTLOADER_SetActiveBank(METADATA_ActiveApp_Typedef active_bank)
 {
     FLASH_EraseInitTypeDef erase_sector;
@@ -81,6 +83,7 @@ BOOTLOADER_Status_Typedef BOOTLOADER_SetActiveBank(METADATA_ActiveApp_Typedef ac
     erase_sector.NbPages = 1;
     uint32_t error_page = 0;
 
+    /* Save context before erase */
     recoverData[0] = active_bank;
     recoverData[1] = checkActive->pFlag;
 
@@ -92,6 +95,7 @@ BOOTLOADER_Status_Typedef BOOTLOADER_SetActiveBank(METADATA_ActiveApp_Typedef ac
         return BOOTLOADER_ERASE_ERR;
     }
 
+    /* Restore back up data for active bank sector */
     for(uint8_t i = 0; i < 2; i++)
     {
         checkStatus = HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, (uint32_t)(METADATA_ACTIVE_BANK_ADDR + 4*i), recoverData[i]);
@@ -106,6 +110,7 @@ BOOTLOADER_Status_Typedef BOOTLOADER_SetActiveBank(METADATA_ActiveApp_Typedef ac
 }
 
 
+/* Set pending flag in metadata sector */
 BOOTLOADER_Status_Typedef BOOTLOADER_SetPendingFlag(bool pFlag)
 {
     FLASH_EraseInitTypeDef erase_sector;
@@ -118,6 +123,7 @@ BOOTLOADER_Status_Typedef BOOTLOADER_SetPendingFlag(bool pFlag)
     erase_sector.NbPages = 1;
     uint32_t error_page = 0;
 
+    /* Save context before erase */
     recoverData[0] = checkActive->activeBank;
     recoverData[1] = pFlag;
 
@@ -129,6 +135,7 @@ BOOTLOADER_Status_Typedef BOOTLOADER_SetPendingFlag(bool pFlag)
         return BOOTLOADER_PROGRAM_ERR;
     }
 
+    /* Restore back up data for active bank sector */
     for(uint8_t i = 0; i < 2; i++)
     {
         checkStatus = HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, (uint32_t)(METADATA_ACTIVE_BANK_ADDR + 4*i), recoverData[i]);
@@ -143,6 +150,7 @@ BOOTLOADER_Status_Typedef BOOTLOADER_SetPendingFlag(bool pFlag)
 }
 
 
+/* Receive information frame from host (CMD | SIZE | CRC | VERSION) */
 BOOTLOADER_Status_Typedef BOOTLOADER_SaveInfoFrame(const uint8_t data[])
 {
     METADATA_SectorDef_t *metadata = (METADATA_SectorDef_t *)METADATA_SECTOR_ADDR;
@@ -158,7 +166,8 @@ BOOTLOADER_Status_Typedef BOOTLOADER_SaveInfoFrame(const uint8_t data[])
     uint8_t version = data[7];
 
     HAL_FLASH_Unlock();
-    
+
+    /* Write new firmware information to metadata sector */
     switch (checkActive->activeBank)
     {
         case ACTIVE_APP_A:
@@ -166,14 +175,13 @@ BOOTLOADER_Status_Typedef BOOTLOADER_SaveInfoFrame(const uint8_t data[])
             erase_sector.PageAddress = METADATA_SECTOR_ADDR;
             erase_sector.NbPages = 1;
 
+            /* Save context and data before erase full sector */
             recoverData[0] = metadata->Hostsize_AppA;
             recoverData[1] = metadata->Hostcrc_AppA;
             recoverData[2] = metadata->version_AppA;
-
             recoverData[3] = host_size;
             recoverData[4] = host_crc;
             recoverData[5] = version;
-
             recoverData[6] = host_cmd;
 
             checkStatus = HAL_FLASHEx_Erase(&erase_sector, &error_page);
@@ -182,6 +190,7 @@ BOOTLOADER_Status_Typedef BOOTLOADER_SaveInfoFrame(const uint8_t data[])
                 return BOOTLOADER_PROGRAM_ERR;
             }
 
+            /* Restore back up data for metadata sector */
             for(uint8_t i = 0; i < 7; i++)
             {
                 checkStatus = HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, (uint32_t)(METADATA_SECTOR_ADDR + 4*i), recoverData[i]);
@@ -197,15 +206,14 @@ BOOTLOADER_Status_Typedef BOOTLOADER_SaveInfoFrame(const uint8_t data[])
             erase_sector.PageAddress = METADATA_SECTOR_ADDR;
             erase_sector.NbPages = 1;
 
+            /* Save context and data before erase full sector */
             recoverData[0] = host_size;
             recoverData[1] = host_crc;
             recoverData[2] = version;
-
             recoverData[3] = metadata->Hostsize_AppB;
             recoverData[4] = metadata->Hostcrc_AppB;
             recoverData[5] = metadata->version_AppB;
-
-            recoverData[6] =  host_cmd;
+            recoverData[6] = host_cmd;
 
             checkStatus = HAL_FLASHEx_Erase(&erase_sector, &error_page);
             if(checkStatus != HAL_OK)
@@ -213,18 +221,19 @@ BOOTLOADER_Status_Typedef BOOTLOADER_SaveInfoFrame(const uint8_t data[])
                 return BOOTLOADER_PROGRAM_ERR;
             }
 
+            /* Restore back up data for metadata sector */
             for(uint8_t i = 0; i < 7; i++)
             {
-            checkStatus = HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, (uint32_t)(METADATA_SECTOR_ADDR + 4*i), recoverData[i]);
+                checkStatus = HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, (uint32_t)(METADATA_SECTOR_ADDR + 4*i), recoverData[i]);
                 if(checkStatus != HAL_OK)
                 {
                     return BOOTLOADER_PROGRAM_ERR;
                 }
             }
         break;
-    
+
         default:
-                return BOOTLOADER_ERR;
+            return BOOTLOADER_ERR;
     }
 
     HAL_FLASH_Lock();
@@ -233,6 +242,7 @@ BOOTLOADER_Status_Typedef BOOTLOADER_SaveInfoFrame(const uint8_t data[])
 }
 
 
+/* Function to receive new firmware data via CAN and write to available sector */
 BOOTLOADER_Status_Typedef BOOTLOADER_ReceiveFirmware(void)
 {
     METADATA_SectorDef_t *metadata = (METADATA_SectorDef_t *)METADATA_SECTOR_ADDR;
@@ -244,12 +254,11 @@ BOOTLOADER_Status_Typedef BOOTLOADER_ReceiveFirmware(void)
     static uint16_t index = 0;
     uint16_t offet_addr = 0;
     uint16_t firmware_length = 0;
-    
-    
+
     FLASH_EraseInitTypeDef erase_sector;
     uint32_t error_page = 0;
     HAL_StatusTypeDef checkStatus;
-    
+
     HAL_FLASH_Unlock();
 
     switch (checkActive->activeBank)
@@ -259,6 +268,7 @@ BOOTLOADER_Status_Typedef BOOTLOADER_ReceiveFirmware(void)
             erase_sector.NbPages = 15;
             erase_sector.TypeErase = FLASH_TYPEERASE_PAGES;
 
+            /* Calculate number of CAN frames to receive */
             firmware_length = metadata->Hostsize_AppB / 8;
             if(metadata->Hostsize_AppB % 8)
             {
@@ -271,18 +281,21 @@ BOOTLOADER_Status_Typedef BOOTLOADER_ReceiveFirmware(void)
                 return BOOTLOADER_ERASE_ERR;
             }
 
+            /* Send START signal to host */
             BOOTLOADER_SendACK(CAN_START);
 
             for(uint32_t i = 0; i < firmware_length; i++)
             {
-                while(HAL_CAN_GetRxFifoFillLevel(can_cfg.hcan, can_cfg.SelectFIFO)  == 0);
-                HAL_CAN_GetRxMessage(can_cfg.hcan, can_cfg.SelectFIFO , &Rx_config, rxdata);
+                /* Wait until CAN frame available */
+                while(HAL_CAN_GetRxFifoFillLevel(can_cfg.hcan, can_cfg.SelectFIFO) == 0);
+                HAL_CAN_GetRxMessage(can_cfg.hcan, can_cfg.SelectFIFO, &Rx_config, rxdata);
 
                 for(uint8_t k = 0; k < Rx_config.DLC; k++)
                 {
                     write_flash[index++] = rxdata[k];
                 }
-                
+
+                /* Write to flash every 1024 bytes */
                 if(index >= 1024)
                 {
                     BOOTLOADER_SendACK(CAN_ACK_BUSY);
@@ -303,26 +316,26 @@ BOOTLOADER_Status_Typedef BOOTLOADER_ReceiveFirmware(void)
                 }
             }
 
+            /* Write remaining bytes, padding with 0xFF to align to word boundary */
             if(index > 0)
+            {
+                while(index % 4 != 0) write_flash[index++] = 0xFF;
+
+                for(uint16_t j = 0; j < index; j += 4)
                 {
-                    // Padding mảng bằng 0xFF cho đủ Word trước khi ghi nốt
-                    while(index % 4 != 0) write_flash[index++] = 0xFF;
-
-                    for(uint16_t j = 0; j < index; j += 4)
-                    {
-                        uint32_t word = write_flash[j] | (write_flash[j+1] << 8) | (write_flash[j+2] << 16) | (write_flash[j+3] << 24);
-                        HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, APP_B_START_ADDR + offet_addr, word);
-                        offet_addr += 4;
-                    }
+                    uint32_t word = write_flash[j] | (write_flash[j+1] << 8) | (write_flash[j+2] << 16) | (write_flash[j+3] << 24);
+                    HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, APP_B_START_ADDR + offet_addr, word);
+                    offet_addr += 4;
                 }
-
+            }
         break;
-    
+
         case ACTIVE_APP_B:
             erase_sector.PageAddress = APP_A_START_ADDR;
             erase_sector.NbPages = 15;
             erase_sector.TypeErase = FLASH_TYPEERASE_PAGES;
 
+            /* Calculate number of CAN frames to receive */
             firmware_length = metadata->Hostsize_AppA / 8;
             if(metadata->Hostsize_AppA % 8)
             {
@@ -335,18 +348,21 @@ BOOTLOADER_Status_Typedef BOOTLOADER_ReceiveFirmware(void)
                 return BOOTLOADER_PROGRAM_ERR;
             }
 
+            /* Send START signal to host */
             BOOTLOADER_SendACK(CAN_START);
 
             for(uint32_t i = 0; i < firmware_length; i++)
             {
-                while(HAL_CAN_GetRxFifoFillLevel(can_cfg.hcan, can_cfg.SelectFIFO)  == 0);
-                HAL_CAN_GetRxMessage(can_cfg.hcan, can_cfg.SelectFIFO , &Rx_config, rxdata);
+                /* Wait until CAN frame available */
+                while(HAL_CAN_GetRxFifoFillLevel(can_cfg.hcan, can_cfg.SelectFIFO) == 0);
+                HAL_CAN_GetRxMessage(can_cfg.hcan, can_cfg.SelectFIFO, &Rx_config, rxdata);
 
                 for(uint8_t k = 0; k < Rx_config.DLC; k++)
                 {
                     write_flash[index++] = rxdata[k];
                 }
-                
+
+                /* Write to flash every 1024 bytes */
                 if(index >= 1024)
                 {
                     BOOTLOADER_SendACK(CAN_ACK_BUSY);
@@ -367,19 +383,18 @@ BOOTLOADER_Status_Typedef BOOTLOADER_ReceiveFirmware(void)
                 }
             }
 
+            /* Write remaining bytes, padding with 0xFF to align to word boundary */
             if(index > 0)
+            {
+                while(index % 4 != 0) write_flash[index++] = 0xFF;
+
+                for(uint16_t j = 0; j < index; j += 4)
                 {
-                    // Padding mảng bằng 0xFF cho đủ Word trước khi ghi nốt
-                    while(index % 4 != 0) write_flash[index++] = 0xFF;
-
-                    for(uint16_t j = 0; j < index; j += 4)
-                    {
-                        uint32_t word = write_flash[j] | (write_flash[j+1] << 8) | (write_flash[j+2] << 16) | (write_flash[j+3] << 24);
-                        HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, APP_A_START_ADDR + offet_addr, word);
-                        offet_addr += 4;
-                    }
+                    uint32_t word = write_flash[j] | (write_flash[j+1] << 8) | (write_flash[j+2] << 16) | (write_flash[j+3] << 24);
+                    HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, APP_A_START_ADDR + offet_addr, word);
+                    offet_addr += 4;
                 }
-
+            }
         break;
 
         default:
@@ -395,6 +410,7 @@ BOOTLOADER_Status_Typedef BOOTLOADER_ReceiveFirmware(void)
 }
 
 
+/* Function to verify new firmware by CRC32 and set pending flag */
 BOOTLOADER_Status_Typedef BOOTLOADER_CheckFirmwareCRC(void)
 {
     METADATA_SectorDef_t *metadata = (METADATA_SectorDef_t *)METADATA_SECTOR_ADDR;
@@ -406,6 +422,7 @@ BOOTLOADER_Status_Typedef BOOTLOADER_CheckFirmwareCRC(void)
     switch (checkActive->activeBank)
     {
         case ACTIVE_APP_A:
+            /* Check if size is odd then +1 at last */
             firmware_length = metadata->Hostsize_AppB / 4;
             if(metadata->Hostsize_AppB % 4)
             {
@@ -429,8 +446,9 @@ BOOTLOADER_Status_Typedef BOOTLOADER_CheckFirmwareCRC(void)
                 return BOOTLOADER_CHECK_CRC_FAILD;
             }
         break;
-    
+
         case ACTIVE_APP_B:
+            /* Check if size is odd then +1 at last */
             firmware_length = metadata->Hostsize_AppA / 4;
             if(metadata->Hostsize_AppA % 4)
             {
@@ -441,7 +459,6 @@ BOOTLOADER_Status_Typedef BOOTLOADER_CheckFirmwareCRC(void)
 
             mPrintf("crc_host: %.08lX\n", metadata->Hostcrc_AppA);
             mPrintf("real crc: %.08lX\n", checkCRC);
-
             if(checkCRC == metadata->Hostcrc_AppA)
             {
                 checkStatus = BOOTLOADER_SetPendingFlag(true);
@@ -464,6 +481,7 @@ BOOTLOADER_Status_Typedef BOOTLOADER_CheckFirmwareCRC(void)
 }
 
 
+/* Erase current firmware and roll back to older firmware version */
 BOOTLOADER_Status_Typedef BOOTLOADER_EraseCurrentFirmware(void)
 {
     METADATA_ActiveBank_t *checkActive = (METADATA_ActiveBank_t *)METADATA_ACTIVE_BANK_ADDR;
@@ -484,10 +502,10 @@ BOOTLOADER_Status_Typedef BOOTLOADER_EraseCurrentFirmware(void)
             {
                 return BOOTLOADER_PROGRAM_ERR;
             }
-            
+
             BOOTLOADER_SetActiveBank(ACTIVE_APP_B);
         break;
-    
+
         case ACTIVE_APP_B:
             erase_sector.TypeErase = FLASH_TYPEERASE_PAGES;
             erase_sector.PageAddress = APP_B_START_ADDR;
@@ -502,7 +520,7 @@ BOOTLOADER_Status_Typedef BOOTLOADER_EraseCurrentFirmware(void)
             BOOTLOADER_SetActiveBank(ACTIVE_APP_A);
         break;
 
-        default: 
+        default:
             HAL_FLASH_Lock();
             return BOOTLOADER_ERR;
     }
@@ -512,16 +530,20 @@ BOOTLOADER_Status_Typedef BOOTLOADER_EraseCurrentFirmware(void)
 }
 
 
+/* Receive command function */
 static void BOOTLOADER_ReceiveCmd(void)
 {
     BOOTLOADER_Status_Typedef checkStatus;
     CAN_RxHeaderTypeDef Rx_config;
     uint8_t rxdata[8] = {0};
 
-    while(HAL_CAN_GetRxFifoFillLevel(can_cfg.hcan, can_cfg.SelectFIFO)  == 0);
-    HAL_CAN_GetRxMessage(can_cfg.hcan, can_cfg.SelectFIFO , &Rx_config, rxdata);
+    /* Wait until CAN frame available */
+    while(HAL_CAN_GetRxFifoFillLevel(can_cfg.hcan, can_cfg.SelectFIFO) == 0);
+    HAL_CAN_GetRxMessage(can_cfg.hcan, can_cfg.SelectFIFO, &Rx_config, rxdata);
+
     switch (rxdata[0])
     {
+        /* Detect user's new firmware update request */
         case BOOTLOADER_WRITE_CMD:
             checkStatus = BOOTLOADER_SaveInfoFrame(rxdata);
             if(checkStatus != BOOTLOADER_OK)
@@ -529,7 +551,6 @@ static void BOOTLOADER_ReceiveCmd(void)
                 mPrintf("Save infomation frame failed!\n");
             }
             mPrintf("Waiting for new firmware...\n");
-
 
             checkStatus = BOOTLOADER_ReceiveFirmware();
             if(checkStatus != BOOTLOADER_OK)
@@ -543,12 +564,11 @@ static void BOOTLOADER_ReceiveCmd(void)
             if(checkStatus != BOOTLOADER_OK)
             {
                 mPrintf("CRC mismatch, Please retry!\n");
-                
                 mPrintf("Error ID: %d\n", checkStatus);
             }
-
         break;
 
+        /* Detect user's erase current firmware and roll back request */
         case BOOTLOADER_ERASE_CMD:
             mPrintf("Erasing current firmware...\n");
             checkStatus = BOOTLOADER_EraseCurrentFirmware();
@@ -558,18 +578,18 @@ static void BOOTLOADER_ReceiveCmd(void)
             }
             mPrintf("Erase firmware finished!\n");
         break;
-    
+
+        /* Check if user's invalid command */
         default:
-        mPrintf("Unknow Command!\n");
+            mPrintf("Unknow Command!\n");
         break;
-    } 
+    }
 }
 
 
 static void JUMP_To_Boot(void)
 {
     HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, GPIO_PIN_SET);
-
     BOOTLOADER_ReceiveCmd();
 }
 
@@ -588,6 +608,7 @@ void BOOTLOADER_Init(void)
         mPrintf("Something is wrong with CAN!\n");
     }
 
+    /* Check if enter bootloader mode */
     if(!(HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_0)))
     {
         mPrintf("Enter Bootloader mode!\n");
@@ -595,16 +616,16 @@ void BOOTLOADER_Init(void)
     }
     else
     {
+        /* Check if jump to application banks */
         switch (checkActive->activeBank)
         {
-            case  ACTIVE_APP_A:
+            case ACTIVE_APP_A:
                 firmwareLength = metadata->Hostsize_AppB / 4;
                 if(metadata->Hostsize_AppB % 4)
                 {
                     firmwareLength++;
                 }
                 check_crc_App = HAL_CRC_Calculate(&hcrc, (uint32_t *)APP_B_START_ADDR, firmwareLength);
-
 
                 if(checkActive->pFlag == 0)
                 {
@@ -619,19 +640,18 @@ void BOOTLOADER_Init(void)
                     BOOTLOADER_SetPendingFlag(false);
 
                     mPrintf("New firmware detected!\nJumping to new application..\n");
-                    mPrintf("Current application firmware: %.X\n", checkActive->activeBank); 
+                    mPrintf("Current application firmware: %.X\n", checkActive->activeBank);
                     JUMP_To_App_B();
                 }
                 else if(checkActive->pFlag == 1 && metadata->Hostcrc_AppB == check_crc_App)
                 {
                     mPrintf("CRC check mismatch!\nRoll back to older firmware...\n");
-                    mPrintf("Current application firmware: %.X\n", checkActive->activeBank); 
+                    mPrintf("Current application firmware: %.X\n", checkActive->activeBank);
                     JUMP_To_App_A();
                 }
             break;
 
-
-            case  ACTIVE_APP_B:
+            case ACTIVE_APP_B:
                 firmwareLength = metadata->Hostsize_AppA / 4;
                 if(metadata->Hostsize_AppA % 4)
                 {
@@ -652,23 +672,22 @@ void BOOTLOADER_Init(void)
                     BOOTLOADER_SetPendingFlag(false);
 
                     mPrintf("New firmware detected!\nJumping to new application..\n");
-                    mPrintf("Current application firmware: %.X\n", checkActive->activeBank); 
+                    mPrintf("Current application firmware: %.X\n", checkActive->activeBank);
                     JUMP_To_App_A();
                 }
                 else if(checkActive->pFlag == 1 && metadata->Hostcrc_AppA == check_crc_App)
                 {
                     mPrintf("CRC check mismatch!\nRoll back to older firmware...\n");
-                    mPrintf("Current application firmware: %.X\n", checkActive->activeBank); 
+                    mPrintf("Current application firmware: %.X\n", checkActive->activeBank);
                     JUMP_To_App_B();
                 }
             break;
-            
+
             default:
                 /* Check if there are no firmware available then roll back to Boot manager */
                 mPrintf("No firmware detected!\n");
                 JUMP_To_Boot();
-                break;
+            break;
         }
-
     }
 }
