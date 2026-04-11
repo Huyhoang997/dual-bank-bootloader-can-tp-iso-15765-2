@@ -126,21 +126,21 @@ Host                         STM32 Bootloader
 
 > Device running current firmware → GPIO PA0 pulled LOW → reset → enter bootloader mode → receive new firmware via CAN.
 
-<img width="928" height="795" alt="image" src="https://github.com/user-attachments/assets/dd909f94-f430-48a9-91e0-e08decb0ee5c" />
+<img width="600" height="600" alt="image" src="https://github.com/user-attachments/assets/dd909f94-f430-48a9-91e0-e08decb0ee5c" />
 
 
 #### Demo — Firmware Received & CRC Verified
 
 > New firmware fully received, CRC check passed, pending flag set.
 
-<img width="921" height="803" alt="image" src="https://github.com/user-attachments/assets/0bf62c7c-f602-4278-9ad9-ac639a4d733d" />
+<img width="600" height="600" alt="image" src="https://github.com/user-attachments/assets/0bf62c7c-f602-4278-9ad9-ac639a4d733d" />
 
 
 #### Demo — Jump to New Firmware
 
 > On next boot, bootloader detects pending flag, switches bank, jumps to new application.
 
-<img width="923" height="801" alt="image" src="https://github.com/user-attachments/assets/6b0be76b-a3b4-424a-a9eb-e791a9f24c25" />
+<img width="600" height="600" alt="image" src="https://github.com/user-attachments/assets/6b0be76b-a3b4-424a-a9eb-e791a9f24c25" />
 
 
 ---
@@ -153,9 +153,9 @@ Host                         STM32 Bootloader
 4. Switches `activeBank` to the other bank.
 5. On next boot, automatically jumps to the older firmware.
 
-<img width="919" height="805" alt="image" src="https://github.com/user-attachments/assets/75335b09-84ce-40f3-8989-1305ca94ac73" />
+<img width="600" height="600" alt="image" src="https://github.com/user-attachments/assets/75335b09-84ce-40f3-8989-1305ca94ac73" />
 
-<img width="925" height="803" alt="image" src="https://github.com/user-attachments/assets/20e1060a-83ee-429b-8d4f-d2c147d78540" />
+<img width="600" height="600" alt="image" src="https://github.com/user-attachments/assets/20e1060a-83ee-429b-8d4f-d2c147d78540" />
 
 
 
