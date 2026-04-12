@@ -70,6 +70,7 @@ typedef struct {
 
 ### Boot Flow
 
+<img width="1440" height="1568" alt="image" src="https://github.com/user-attachments/assets/36422e0b-8847-45b7-b4fd-0609ad9e66d4" />
 On every power-on or reset, the bootloader runs the following logic:
 
 1. Check GPIO PA0 — if LOW, enter Bootloader Mode and wait for a CAN command.
